@@ -1,0 +1,3 @@
+telethon
+yagmail
+python-dotenv

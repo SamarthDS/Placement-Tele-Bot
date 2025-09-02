@@ -1,0 +1,11 @@
+.env
+
+# Ignore all session files except the one needed for Railway
+*.session
+!samarth_session.session
+*.session-journal
+
+__pycache__/
+*.pyc
+
+venv/
