@@ -1,45 +1,30 @@
 from telethon import TelegramClient, events
-import yagmail
-
-
 from dotenv import load_dotenv
 import os
+import sendgrid
+from sendgrid.helpers.mail import Mail
 
-load_dotenv()  # Load variables from .env file
+# Load environment variables from .env
+load_dotenv()
 
+# Telegram credentials
 api_id = int(os.getenv("API_ID"))
 api_hash = os.getenv("API_HASH")
-gmail_user = os.getenv("GMAIL_USER")
-gmail_app_password = os.getenv("GMAIL_APP_PASSWORD")
 session_name = 'samarth_session'
 
-# Telegram credentials loaded from .env file
-# Gmail credentials loaded from .env file
+# Email credentials
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+TO_EMAIL = os.getenv("TO_EMAIL")
+FROM_EMAIL = os.getenv("FROM_EMAIL")  # Make sure this email is verified in SendGrid
 
-
-# # Telegram credentials
-# api_id = 11196646
-# api_hash = '973630c74e36490a307704505e5fc18e'
-# session_name = 'samarth_session'
-
-# # Gmail credentials
-# gmail_user = 'samarthdudi04@gmail.com'                # <-- your Gmail
-# gmail_app_password = 'aiax gbjp ufyp ygzy'   # <-- your App Password (NOT your Gmail password)
-
-# Who should receive the email?
-receiver_email = 'samarthdudi04@gmail.com'  # could be same as sender
-
-# Keywords
+# Keywords to monitor
 target_keywords = [
     'cse-ai', 'ai & ml', 'aiml', 'ai-ml', 'cse-aiml', 'all branches',
     'open to all', 'artificial intelligence', 'artificial intelligence and machine learning',
     'ai', 'ai&ml', 'allied'
 ]
 
-# Setup yagmail client
-yag = yagmail.SMTP(gmail_user, gmail_app_password)
-
-# Start Telegram client
+# Setup Telegram client
 client = TelegramClient(session_name, api_id, api_hash)
 
 @client.on(events.NewMessage)
@@ -55,12 +40,25 @@ async def handler(event):
             print(event.message.message)
             print("-" * 50)
 
-            # ✅ Send the email
+            # Prepare SendGrid email
             subject = "📢 New Placement Drive Alert - Engineering 2026"
             body = f"Group: {chat.title}\n\nMatched Message:\n{event.message.message}"
-            yag.send(to=receiver_email, subject=subject, contents=body)
-            print("📧 Email sent to:", receiver_email)
 
+            message = Mail(
+                from_email=FROM_EMAIL,
+                to_emails=TO_EMAIL,
+                subject=subject,
+                plain_text_content=body
+            )
+
+            try:
+                sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+                response = sg.send(message)
+                print(f"📧 Email sent via SendGrid: {response.status_code}")
+            except Exception as e:
+                print("❌ Failed to send email via SendGrid:", str(e))
+
+# Start the bot
 client.start()
-print("🤖 Listening to messages and forwarding to Gmail...")
+print("🤖 Listening to messages and forwarding to Gmail via SendGrid...")
 client.run_until_disconnected()
