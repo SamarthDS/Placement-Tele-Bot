@@ -15,7 +15,7 @@ session_name = 'samarth_session'
 # Email credentials
 SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 TO_EMAIL = os.getenv("TO_EMAIL")
-FROM_EMAIL = os.getenv("FROM_EMAIL")  # Make sure this email is verified in SendGrid
+FROM_EMAIL = os.getenv("FROM_EMAIL")  # Must be verified in SendGrid
 
 # Keywords to monitor
 target_keywords = [
@@ -24,14 +24,21 @@ target_keywords = [
     'ai', 'ai&ml', 'allied'
 ]
 
+# Initialize SendGrid client
+sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
+
 # Setup Telegram client
 client = TelegramClient(session_name, api_id, api_hash)
 
 @client.on(events.NewMessage)
 async def handler(event):
-    chat = await event.get_chat()
+    try:
+        chat = await event.get_chat()
 
-    if hasattr(chat, 'title') and 'engineering 2026 batch' in chat.title.lower():
+        # ✅ STRICT group title check
+        if not hasattr(chat, 'title') or 'engineering 2026 batch' not in chat.title.lower():
+            return  # Skip messages not from the target group
+
         message_text = event.message.message.lower()
         normalized_text = message_text.replace('&', 'and')
 
@@ -40,23 +47,22 @@ async def handler(event):
             print(event.message.message)
             print("-" * 50)
 
-            # Prepare SendGrid email
             subject = "📢 New Placement Drive Alert - Engineering 2026"
             body = f"Group: {chat.title}\n\nMatched Message:\n{event.message.message}"
 
-            message = Mail(
+            # ✅ Send the email via SendGrid
+            email = Mail(
                 from_email=FROM_EMAIL,
                 to_emails=TO_EMAIL,
                 subject=subject,
                 plain_text_content=body
             )
+            response = sg.send(email)
+            print("📧 Email sent! SendGrid status:", response.status_code)
 
-            try:
-                sg = sendgrid.SendGridAPIClient(api_key=SENDGRID_API_KEY)
-                response = sg.send(message)
-                print(f"📧 Email sent via SendGrid: {response.status_code}")
-            except Exception as e:
-                print("❌ Failed to send email via SendGrid:", str(e))
+    except Exception as e:
+        print("❌ Error in handler:", e)
+
 
 # Start the bot
 client.start()
